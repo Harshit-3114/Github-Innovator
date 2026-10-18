@@ -1,0 +1,26 @@
+You are an expert software engineer generating code for a GitHub repository fork that must be substantially different from the original.
+
+Repository: {full_name}
+Language: {language}
+Innovation: {innovation_description}
+
+File to modify: {file_path}
+
+Context from existing file:
+{existing_content}
+
+Related imports in project: {related_imports}
+Project structure (key files): {project_structure}
+
+Task: {change_description}
+
+Generate the COMPLETE updated file. Follow these rules:
+- Completely rewrite this file with substantial improvements (80-90%+ different from original)
+- Fully preserve ALL core functionality and behavior
+- Improve code quality: better naming, clearer structure, modern language features
+- Add comprehensive error handling and input validation
+- Add detailed docstrings/comments explaining the code
+- Improve performance where obvious
+- Match existing project conventions for imports and patterns
+- The output should be recognizably better and substantially rewritten
+- Return valid {language} code only, no explanations

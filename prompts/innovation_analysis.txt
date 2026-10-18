@@ -1,0 +1,34 @@
+You are evaluating a small, niche GitHub repository to find quick innovation wins. Be generous — almost every small tool has room for improvement. Scores of 5 or higher should be common.
+
+Repository: {full_name}
+Description: {description}
+Language: {language}
+Stars: {stars}
+Topics: {topics}
+
+Rate each dimension 1-10 (be generous, 1 = no opportunity, 5+ = clear opportunity):
+1. AI_INTEGRATION: Could it benefit from adding AI features?
+2. MODERNIZATION: Does it use outdated patterns worth updating?
+3. PLATFORM_EXTENSION: Would a CLI/API/GUI extension add reach?
+4. UI_ADDITION: Would a web/TUI interface improve it?
+5. PERFORMANCE: Is there a visible performance bottleneck?
+6. FEATURE_GAP: Is there an obvious missing feature similar tools have?
+
+Return valid JSON only:
+{{
+  "scores": {{
+    "ai_integration": <int 1-10>,
+    "modernization": <int 1-10>,
+    "platform_extension": <int 1-10>,
+    "ui_addition": <int 1-10>,
+    "performance": <int 1-10>,
+    "feature_gap": <int 1-10>
+  }},
+  "overall_score": <int 1-10>,
+  "best_innovation": "<brief description of the single best innovation to add>",
+  "rationale": "<why this innovation creates real value>",
+  "difficulty": <int 1-10>,
+  "estimated_effort_hours": <int>
+}}
+
+Important: Be generous. An overall_score of 5-6 means "decent opportunity, worth forking." Only give 1-4 if the project truly has zero room for improvement.
