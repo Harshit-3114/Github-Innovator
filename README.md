@@ -71,6 +71,48 @@ When you hit **Run Pipeline**, it asks **how many repos to fork** — enter a nu
 6. **Test** — Runs `pytest` / `npm test` / `go test` / `cargo test` before committing
 7. **Publish** — Commits to a branch and pushes the fork
 
+## How the workflow is wired
+
+The pipeline is a [LangGraph](https://langchain-ai.github.io/langgraph/)
+`StateGraph` over a shared `InnovationState`. Each node does one thing and
+returns an updated state:
+
+```
+discover → code_index → plan → implement → validate → test
+        → readme_gen → publish → record → cleanup → record_done
+```
+
+`validate` is the gate: if the rewritten code does not pass the project's own
+test command, the run stops there and nothing is published.
+
+## Running it continuously
+
+`keep_alive.py` runs the pipeline in a loop on a fixed interval, so the agent
+keeps working without a terminal open:
+
+```bash
+python keep_alive.py              # every 6 hours
+python keep_alive.py --interval 3 # every 3 hours
+python keep_alive.py --once       # run once and exit
+```
+
+On Windows, schedule it with Task Scheduler:
+
+```powershell
+schtasks /create /tn "GitHubInnovator" -tr "python C:\path\to\keep_alive.py" /sc daily /st 06:00 /f
+```
+
+State lives in `~/.github-innovator/` — `innovations.db` for the run history,
+`logs/` for the per-run logs, and `tmp/` for the working clones.
+
+## Your GitHub token
+
+The `GITHUB_TOKEN` needs permission to create forks and push to them: the
+`repo` scope for private repositories, or fine-grained access with **Read and
+write** on the repositories it will fork into. A token without write access
+fails at the publish step, after the LLM work has already been done — so
+check it before a long run.
+
 ## Project structure
 
 ```
@@ -107,3 +149,13 @@ All settings in `core/config.py`:
 ```bash
 pytest tests/
 ```
+
+34 tests, and they run offline — no NVIDIA NIM key and no GitHub token
+needed. They cover the discovery filters, the Pydantic models and the
+validator.
+
+CI runs the same suite plus `ruff check .` on every push.
+
+## License
+
+MIT — see [LICENSE](LICENSE). Copyright (c) 2026 Harshit Shyamsukha.
