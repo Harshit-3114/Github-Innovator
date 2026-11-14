@@ -27,7 +27,9 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install ruff
+        # Pinned so the lint result does not move when ruff changes its
+        # default rule set. Bump it deliberately, then fix what it finds.
+        pip install ruff==0.17.5
 
     - name: Lint with ruff
       # The configuration lives in pyproject.toml ([tool.ruff]).

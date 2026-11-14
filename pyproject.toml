@@ -25,3 +25,35 @@ include = ["cli*", "tui*", "core*", "agents*", "db*"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+
+# The rule set is spelled out rather than inherited from ruff's defaults.
+# Ruff 0.17 widened the default selection (isort, bugbear, bandit, pylint,
+# refurb and pyupgrade all became default-on), which turned a green build
+# red without a single line of the project changing. An explicit list keeps
+# CI reproducible and makes every new rule an intentional decision.
+[tool.ruff.lint]
+select = [
+    "E4",   # pycodestyle: indentation and syntax-level errors
+    "E7",
+    "E9",
+    "E501", # line length
+    "F",    # pyflakes
+    "I",    # isort
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "BLE",  # blind except
+    "S",    # flake8-bandit
+    "PLW",  # pylint warnings (not the opinionated PLR refactor rules)
+    "RUF",  # ruff-specific
+]
+ignore = [
+    # The TUI and the pipeline supervisor catch broad exceptions on purpose:
+    # a failing screen must not take the whole app down, and the supervisor
+    # loop must survive a failed run. Each of those sites logs with
+    # logger.exception so the traceback is not lost.
+    "BLE001",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests use bare asserts, fixed temporary paths and literal expected values.
+"tests/*" = ["S101", "S108"]

@@ -7,18 +7,23 @@ Usage:
   python keep_alive.py --once             # Run once and exit
 
 Schedule with Task Scheduler on Windows:
-  schtasks /create /tn "GitHubInnovator" /tr "python C:\\path\\to\\keep_alive.py" /sc daily /st 06:00 /f
+  schtasks /create /tn "GitHubInnovator" /tr "python C:\\path\\to\\keep_alive.py" \
+    /sc daily /st 06:00 /f
 
 Or just leave this script running in a terminal.
 """
+import argparse
+import logging
 import sys
 import time
-import argparse
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
 from agents.graph import run_pipeline
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+logger = logging.getLogger(__name__)
 
 
 def main():
@@ -43,6 +48,7 @@ def main():
             fork = result.get("fork_url", "no fork")
             print(f"[{status}] Run #{result['run_id']} — {fork}")
         except Exception as e:
+            logger.exception("Pipeline run failed")
             print(f"[ERROR] {e}")
 
         print(f"Next run in {args.interval} hours...\n")

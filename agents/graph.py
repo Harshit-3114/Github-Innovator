@@ -1,24 +1,30 @@
 import logging
 from datetime import datetime
 from typing import Literal
-from langgraph.graph import StateGraph, END
-from core.models import InnovationState
-from core.github_client import GitHubClient
-from core.llm_client import nim
-from agents.discovery import discover_repos, filter_repos
+
+from langgraph.graph import END, StateGraph
+
 from agents.analyzer import run_analysis
 from agents.code_indexer import build_code_graph
-from agents.planner import generate_innovation_plan
 from agents.code_writer import execute_plan
-from agents.publisher import fork_and_clone, commit_and_push, cleanup
+from agents.discovery import discover_repos, filter_repos
+from agents.planner import generate_innovation_plan
+from agents.publisher import cleanup, commit_and_push, fork_and_clone
 from agents.readme_gen import generate_readme
+from core.github_client import GitHubClient
+from core.llm_client import nim
+from core.models import InnovationState
 from core.validator import run_tests
+from db.repository import complete_run_log, create_run_log, mark_repo_processed
 from db.schema import init_db
-from db.repository import create_run_log, complete_run_log, mark_repo_processed
 
 logger = logging.getLogger(__name__)
 
-_cloned_path: str = ""
+# The path of the clone that is currently being processed. It is a one-slot
+# list rather than a plain string so that recording a new path does not need
+# a `global` statement - the run_pipeline finally-block reads it to clean up
+# even when the pipeline raised before it could return a state.
+_cloned_path: list[str] = [""]
 
 
 def _log(msg: str) -> None:
@@ -50,12 +56,15 @@ def node_discover(state: InnovationState) -> dict:
     return {
         "candidate_repos": candidates,
         "innovation_opportunities": qualified,
-        "run_metadata": {"discovered": len(candidates), "qualified": len(qualified), "started_at": datetime.now().isoformat()},
+        "run_metadata": {
+            "discovered": len(candidates),
+            "qualified": len(qualified),
+            "started_at": datetime.now().isoformat(),
+        },
     }
 
 
 def node_code_index(state: InnovationState) -> dict:
-    global _cloned_path
     _heading("Indexing codebase")
     qualified = state["innovation_opportunities"]
     if not qualified:
@@ -76,7 +85,7 @@ def node_code_index(state: InnovationState) -> dict:
         return {}
 
     repo_path, fork_url = result
-    _cloned_path = repo_path
+    _cloned_path[0] = repo_path
     _log(f"Forked and cloned to {repo_path}")
     _log("Building code graph (extracting imports, classes, functions)...")
     code_graph = build_code_graph(repo_path, repo.repo.language)
@@ -86,7 +95,11 @@ def node_code_index(state: InnovationState) -> dict:
         "code_graph": code_graph,
         "fork_url": fork_url,
         "retry_count": 0,
-        "run_metadata": {**state["run_metadata"], "cloned_path": repo_path, "cloned_repo": repo.repo.full_name},
+        "run_metadata": {
+            **state["run_metadata"],
+            "cloned_path": repo_path,
+            "cloned_repo": repo.repo.full_name,
+        },
     }
 
 
@@ -265,7 +278,7 @@ def node_cleanup(state: InnovationState) -> dict:
         try:
             cleanup(repo_path)
             _log(f"Cleaned up {repo_path}")
-        except Exception as e:
+        except OSError as e:
             logger.warning(f"Cleanup failed: {e}")
     idx = state.get("current_index", 0) + 1
     return {"current_index": idx}
@@ -334,8 +347,7 @@ def build_workflow() -> StateGraph:
 
 
 def run_pipeline(max_repos: int = 0, model: str | None = None) -> dict:
-    global _cloned_path
-    _cloned_path = ""
+    _cloned_path[0] = ""
     init_db()
     run_id = create_run_log()
     _log("=" * 60)
@@ -381,11 +393,11 @@ def run_pipeline(max_repos: int = 0, model: str | None = None) -> dict:
         )
         return {"run_id": run_id, "status": "failed", "error": str(e)}
     finally:
-        if _cloned_path:
+        if _cloned_path[0]:
             try:
-                cleanup(_cloned_path)
-            except Exception:
-                pass
+                cleanup(_cloned_path[0])
+            except OSError as e:
+                logger.debug("Final cleanup of %s failed: %s", _cloned_path[0], e)
 
     meta = final.get("run_metadata", {})
     fork_url = final.get("fork_url", "")

@@ -1,11 +1,12 @@
 import logging
 import queue
+import sqlite3
 import threading
-from typing import Any
+from typing import Any, ClassVar
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Container
+from textual.containers import Container, Horizontal
 from textual.reactive import var
 from textual.screen import Screen
 from textual.widgets import Button, DataTable, Footer, Header, Input, Label, RichLog, Select, Static
@@ -14,6 +15,8 @@ from agents.graph import run_pipeline
 from core.llm_client import nim
 from db.repository import get_recent_runs
 from db.schema import init_db
+
+logger = logging.getLogger(__name__)
 
 log_queue: queue.Queue = queue.Queue()
 
@@ -34,7 +37,8 @@ class StatsPanel(Static):
             " ┌─────────────┬─────────────┬─────────────┐\n"
             " │  Discovered  │  Qualified   │   Forks     │\n"
             " ├─────────────┼─────────────┼─────────────┤\n"
-            f" │    {self.discovered:>5}     │    {self.qualified:>5}     │    {self.forks:>5}     │\n"
+            f" │    {self.discovered:>5}     │    {self.qualified:>5}     │"
+            f"    {self.forks:>5}     │\n"
             " └─────────────┴─────────────┴─────────────┘"
         )
 
@@ -132,8 +136,8 @@ class Dashboard(Screen):
                 stats.discovered = row["repos_discovered"] or 0
                 stats.qualified = row["repos_qualified"] or 0
                 stats.forks = row["forks_created"] or 0
-        except Exception:
-            pass
+        except sqlite3.Error as e:
+            logger.debug("Could not refresh stats: %s", e)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         btn_id = event.button.id
@@ -157,6 +161,7 @@ class Dashboard(Screen):
                            f"Retries: {result.get('retries', 0)}")
             return result
         except Exception as e:
+            logger.exception("Pipeline failed")
             log_queue.put(f"\n[bold red]✗ Pipeline failed: {e}[/bold red]")
             return {}
 
@@ -320,7 +325,7 @@ class ModelPromptScreen(Screen):
         select = self.query_one("#model-select", Select)
         options = [(m, m) for m in self._models]
         if nim.model not in self._models:
-            options = [(f"{nim.model} (default)", nim.model)] + options
+            options = [(f"{nim.model} (default)", nim.model), *options]
         select.set_options(options)
         select.value = nim.model
         select.focus()
@@ -414,7 +419,7 @@ class HistoryScreen(Screen):
                     (row["started_at"] or "")[:19],
                     (row["error"] or "")[:40],
                 )
-        except Exception as e:
+        except sqlite3.Error as e:
             table.add_row("--", f"[red]{e}[/]", "--", "--", "--", "--", "--")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -430,13 +435,13 @@ class InnovatorTUI(App[None]):
 
     _pending_repo_count: int = 0
 
-    SCREENS = {
+    SCREENS: ClassVar[dict[str, type[Screen]]] = {
         "history": HistoryScreen,
         "count_prompt": CountPromptScreen,
         "model_prompt": ModelPromptScreen,
     }
 
-    BINDINGS = [
+    BINDINGS: ClassVar[list[Binding]] = [
         Binding("q", "quit", "Quit"),
         Binding("h", "push_screen('history')", "History"),
         Binding("r", "run_pipeline", "Run"),

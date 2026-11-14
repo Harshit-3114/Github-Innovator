@@ -1,8 +1,15 @@
+import logging
 import re
 from pathlib import Path
-from core.models import CodeGraph, FileInfo, FunctionDef, ClassDef
 
-SKIP_DIRS = {".git", "__pycache__", "node_modules", "venv", ".venv", "target", "vendor", "dist", "build", ".eggs"}
+from core.models import ClassDef, CodeGraph, FileInfo, FunctionDef
+
+logger = logging.getLogger(__name__)
+
+SKIP_DIRS = {
+    ".git", "__pycache__", "node_modules", "venv", ".venv",
+    "target", "vendor", "dist", "build", ".eggs",
+}
 
 
 def build_code_graph(repo_path: str, language: str) -> CodeGraph:
@@ -21,7 +28,8 @@ def build_code_graph(repo_path: str, language: str) -> CodeGraph:
 
         try:
             content = file_path.read_text(encoding="utf-8", errors="ignore")
-        except Exception:
+        except OSError as e:
+            logger.debug("Skipping unreadable file %s: %s", file_path, e)
             continue
 
         rel_path = str(file_path.relative_to(repo))
@@ -32,7 +40,9 @@ def build_code_graph(repo_path: str, language: str) -> CodeGraph:
         graph.functions[rel_path] = _extract_functions(content, language)
         graph.classes[rel_path] = _extract_classes(content, language)
 
-        if file_path.name in ("__init__.py", "main.py", "index.js", "main.go", "main.rs", "cli.py", "cli.js"):
+        if file_path.name in (
+            "__init__.py", "main.py", "index.js", "main.go", "main.rs", "cli.py", "cli.js",
+        ):
             graph.entry_points.append(rel_path)
 
         if file_path.name in ("pyproject.toml", "setup.py", "package.json", "Cargo.toml", "go.mod"):
@@ -76,7 +86,10 @@ def _extract_functions(content: str, language: str) -> list[FunctionDef]:
             start = content[:m.start()].count("\n") + 1
             functions.append(FunctionDef(name=m.group(1), start_line=start, end_line=start))
     elif language in ("JavaScript", "TypeScript"):
-        for m in re.finditer(r"(?:function\s+(\w+)|(\w+)\s*=\s*(?:async\s*)?\(|(\w+)\s*\([^)]*\)\s*{)", content):
+        pattern = (
+            r"(?:function\s+(\w+)|(\w+)\s*=\s*(?:async\s*)?\(|(\w+)\s*\([^)]*\)\s*{)"
+        )
+        for m in re.finditer(pattern, content):
             name = m.group(1) or m.group(2) or m.group(3) or "anon"
             start = content[:m.start()].count("\n") + 1
             functions.append(FunctionDef(name=name, start_line=start, end_line=start))

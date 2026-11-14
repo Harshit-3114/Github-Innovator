@@ -1,6 +1,7 @@
 from unittest.mock import Mock
-from core.models import RepoInfo
+
 from agents.discovery import filter_repos
+from core.models import RepoInfo
 
 
 def make_repo(

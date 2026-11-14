@@ -1,7 +1,10 @@
 import logging
 from pathlib import Path
+
+from openai import OpenAIError
+
 from core.llm_client import nim
-from core.models import FileChange, CodeGraph, InnovationPlan, QualifiedRepo
+from core.models import CodeGraph, FileChange, InnovationPlan, QualifiedRepo
 from core.validator import syntax_check
 
 logger = logging.getLogger(__name__)
@@ -41,11 +44,14 @@ def execute_plan(repo: QualifiedRepo, plan: InnovationPlan, code_graph: CodeGrap
 
         try:
             new_content = nim.chat(
-                system="You are an expert software engineer. Generate clean, production-ready code.",
+                system=(
+                    "You are an expert software engineer. "
+                    "Generate clean, production-ready code."
+                ),
                 user=prompt,
                 temperature=0.3,
             )
-        except Exception as e:
+        except (OpenAIError, ValueError, RuntimeError) as e:
             logger.error(f"Failed to generate code for {change.file}: {e}")
             errors.append({"file": change.file, "error": str(e)})
             continue
@@ -72,5 +78,9 @@ def _clean_code_output(content: str, language: str) -> str:
     if content.startswith("```"):
         lines = content.splitlines()
         if len(lines) >= 2:
-            content = "\n".join(lines[1:-1]) if lines[-1].startswith("```") else "\n".join(lines[1:])
+            content = (
+                "\n".join(lines[1:-1])
+                if lines[-1].startswith("```")
+                else "\n".join(lines[1:])
+            )
     return content.strip()

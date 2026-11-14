@@ -1,6 +1,14 @@
 from core.models import (
-    RepoInfo, QualifiedRepo, CodeGraph, FileInfo, FunctionDef,
-    ClassDef, InnovationPlan, FileChange, ValidationResult, InnovationState,
+    ClassDef,
+    CodeGraph,
+    FileChange,
+    FileInfo,
+    FunctionDef,
+    InnovationPlan,
+    InnovationState,
+    QualifiedRepo,
+    RepoInfo,
+    ValidationResult,
 )
 
 
@@ -92,7 +100,10 @@ class TestInnovationPlan:
         p = InnovationPlan(
             description="Major refactor",
             rationale="Outdated code",
-            changes=[FileChange(file="main.py", change_type="modify", description="Rewrite", language="Python")],
+            changes=[FileChange(
+                file="main.py", change_type="modify",
+                description="Rewrite", language="Python",
+            )],
             new_dependencies=["rich"],
             risk_assessment="medium",
         )

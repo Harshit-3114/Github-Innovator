@@ -1,5 +1,7 @@
 import os
 from pathlib import Path
+from typing import ClassVar
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -19,14 +21,17 @@ class Settings:
     MAX_RETRIES_PER_CHANGE: int = 3
     TEMP_CLONE_DIR: Path = Path.home() / ".github-innovator" / "tmp"
 
-    LICENSES_ALLOWED: set[str] = {"mit", "apache-2.0", "bsd-2-clause", "bsd-3-clause", "unlicense", "isc", "cc0-1.0"}
+    LICENSES_ALLOWED: ClassVar[set[str]] = {
+        "mit", "apache-2.0", "bsd-2-clause", "bsd-3-clause",
+        "unlicense", "isc", "cc0-1.0",
+    }
 
     MIN_STARS: int = 3
     MAX_STARS: int = 500
     MIN_LINES: int = 100
     MAX_LINES: int = 50_000
 
-    SUPPORTED_LANGUAGES: set[str] = {"Python", "JavaScript", "TypeScript", "Go", "Rust"}
+    SUPPORTED_LANGUAGES: ClassVar[set[str]] = {"Python", "JavaScript", "TypeScript", "Go", "Rust"}
 
     INNOVATION_SCORE_THRESHOLD: int = 5
 

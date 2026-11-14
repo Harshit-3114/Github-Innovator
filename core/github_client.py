@@ -1,7 +1,8 @@
-import time
 import logging
-from typing import Optional
+import time
+
 from github import Github, GithubException, RateLimitExceededException
+
 from core.config import settings
 from core.models import RepoInfo
 
@@ -27,7 +28,9 @@ class GitHubClient:
             for repo in page[:max_results]:
                 try:
                     license_key = repo.license.key if repo.license else ""
-                except Exception:
+                except GithubException:
+                    # PyGithub raises UnknownObjectException when a repo has
+                    # no detectable licence. A missing licence is not an error.
                     license_key = ""
 
                 repos.append(RepoInfo(
@@ -49,7 +52,7 @@ class GitHubClient:
             return self.search_repos(query, max_results)
         return repos
 
-    def get_repo_size_lines(self, full_name: str) -> Optional[int]:
+    def get_repo_size_lines(self, full_name: str) -> int | None:
         try:
             repo = self._gh.get_repo(full_name)
             total = 0
@@ -58,17 +61,19 @@ class GitHubClient:
                 content = contents.pop(0)
                 if content.type == "dir":
                     contents.extend(repo.get_contents(content.path))
-                elif content.type == "file" and content.name.endswith((".py", ".js", ".ts", ".go", ".rs")):
+                elif content.type == "file" and content.name.endswith(
+                    (".py", ".js", ".ts", ".go", ".rs")
+                ):
                     try:
                         decoded = content.decoded_content.decode("utf-8")
                         total += len(decoded.splitlines())
-                    except Exception:
-                        pass
+                    except UnicodeDecodeError:
+                        logger.debug("Skipping %s: not UTF-8", content.path)
             return total
-        except Exception:
+        except GithubException:
             return None
 
-    def fork_repo(self, full_name: str, new_name: Optional[str] = None) -> Optional[str]:
+    def fork_repo(self, full_name: str, new_name: str | None = None) -> str | None:
         try:
             fork_name = new_name or full_name.split("/")[1]
             existing = self._gh.get_repo(f"{self.user.login}/{fork_name}")

@@ -1,4 +1,5 @@
 import sqlite3
+
 from core.config import settings
 
 
@@ -53,7 +54,8 @@ def init_db():
 
         CREATE INDEX IF NOT EXISTS idx_processed_repos_status ON processed_repos(status);
         CREATE INDEX IF NOT EXISTS idx_run_logs_started ON run_logs(started_at);
-        CREATE INDEX IF NOT EXISTS idx_processed_repos_processed_at ON processed_repos(processed_at);
+        CREATE INDEX IF NOT EXISTS idx_processed_repos_processed_at
+        ON processed_repos(processed_at);
     """)
     conn.commit()
     conn.close()

@@ -1,6 +1,9 @@
 from pathlib import Path
+
+from openai import OpenAIError
+
 from core.llm_client import nim
-from core.models import QualifiedRepo, InnovationPlan
+from core.models import InnovationPlan, QualifiedRepo
 
 PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "readme_generation.txt"
 PROMPT_TEMPLATE = PROMPT_PATH.read_text(encoding="utf-8")
@@ -24,7 +27,7 @@ def generate_readme(repo: QualifiedRepo, plan: InnovationPlan, fork_name: str) -
             temperature=0.5,
             max_tokens=2048,
         )
-    except Exception:
+    except OpenAIError:
         content = f"# {fork_name}\n\nAI-enhanced fork of {repo.repo.full_name}."
 
     return content

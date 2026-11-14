@@ -1,4 +1,4 @@
-from typing import Optional
+
 from db.schema import get_connection
 
 
@@ -18,9 +18,13 @@ def mark_repo_processed(full_name: str, stars: int, language: str, license_key: 
     conn = get_connection()
     conn.execute("""
         INSERT OR REPLACE INTO processed_repos
-        (full_name, stars, language, license_key, innovation_score, innovation_description, fork_url, status, processed_at)
+        (full_name, stars, language, license_key, innovation_score,
+         innovation_description, fork_url, status, processed_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-    """, (full_name, stars, language, license_key, innovation_score, innovation_description, fork_url, status))
+    """, (
+        full_name, stars, language, license_key, innovation_score,
+        innovation_description, fork_url, status,
+    ))
     conn.commit()
     conn.close()
 
@@ -36,7 +40,7 @@ def create_run_log() -> int:
 
 def complete_run_log(run_id: int, repos_discovered: int, repos_qualified: int,
                      forks_created: int, forks_succeeded: int, total_api_calls: int,
-                     status: str = "completed", error: Optional[str] = None):
+                     status: str = "completed", error: str | None = None):
     conn = get_connection()
     conn.execute("""
         UPDATE run_logs SET

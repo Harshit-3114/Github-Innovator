@@ -1,7 +1,10 @@
 import json
 import logging
+
+from openai import OpenAIError
+
 from core.llm_client import nim
-from core.models import CodeGraph, InnovationPlan, FileChange, QualifiedRepo
+from core.models import CodeGraph, FileChange, InnovationPlan, QualifiedRepo
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +15,9 @@ def generate_innovation_plan(repo: QualifiedRepo, code_graph: CodeGraph) -> Inno
     )
     entry_points = "\n".join(f"  {e}" for e in code_graph.entry_points)
 
-    prompt = f"""Analyze this codebase and plan a comprehensive rewrite that makes the fork 80-90%+ different from the original while preserving core functionality.
+    prompt = f"""Analyze this codebase and plan a comprehensive rewrite that
+makes the fork 80-90%+ different from the original while preserving core
+functionality.
 
 Repository: {repo.repo.full_name}
 Language: {repo.repo.language}
@@ -29,7 +34,8 @@ Test Files: {code_graph.test_files}
 Classes found: { {k: [c.name for c in v] for k, v in code_graph.classes.items()} }
 Functions found: { {k: [f.name for f in v[:5]] for k, v in code_graph.functions.items()} }
 
-You MUST propose modifying MOST of the source files in this project (at least 70%+ of non-trivial files).
+You MUST propose modifying MOST of the source files in this project
+(at least 70%+ of non-trivial files).
 Each file should be substantially rewritten with improvements such as:
 - Complete refactoring with better architecture
 - Adding comprehensive error handling and validation
@@ -54,17 +60,24 @@ Return a JSON plan with specific file changes:
   "rationale": "why this set of changes makes the fork substantially different and better"
 }}
 
-Plan changes for the MAJORITY of source files. At least 5 changes required unless the project has fewer than 5 files. Make each change a complete rewrite of the file.
+Plan changes for the MAJORITY of source files. At least 5 changes required
+unless the project has fewer than 5 files. Make each change a complete
+rewrite of the file.
 """
 
     try:
         result = nim.chat_json(
-            system="You are a senior software architect. Return only valid JSON. You MUST include at least one change in the changes array.",
+            system=(
+                "You are a senior software architect. Return only valid JSON. "
+                "You MUST include at least one change in the changes array."
+            ),
             user=prompt,
         )
         data = json.loads(result)
         logger.info("  Planner response: changes=%s", len(data.get("changes", [])))
-    except (json.JSONDecodeError, Exception) as e:
+    except (OpenAIError, ValueError, RuntimeError) as e:
+        # OpenAIError covers the NIM transport; ValueError covers both a
+        # missing API key and a JSON payload that is not valid JSON.
         logger.warning("  Planner error: %s", e)
         return None
 

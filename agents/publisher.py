@@ -1,9 +1,10 @@
 import logging
 import os
-import stat
 import shutil
+import stat
 import subprocess
 from pathlib import Path
+
 from core.config import settings
 from core.github_client import GitHubClient
 from core.models import InnovationPlan
@@ -15,9 +16,11 @@ def _auth_remote_url(username: str, repo_name: str) -> str:
     return f"https://{username}:{settings.GITHUB_TOKEN}@github.com/{username}/{repo_name}.git"
 
 
-def _git_run(args: list[str], cwd: str | None = None, timeout: int = 120) -> subprocess.CompletedProcess:
-    result = subprocess.run(
-        args, cwd=cwd, capture_output=True, text=True, timeout=timeout,
+def _git_run(
+    args: list[str], cwd: str | None = None, timeout: int = 120
+) -> subprocess.CompletedProcess:
+    result = subprocess.run(  # noqa: S603 - args are fixed git commands built by this module
+        args, cwd=cwd, capture_output=True, text=True, timeout=timeout, check=False,
     )
     return result
 
@@ -45,7 +48,10 @@ def fork_and_clone(gh: GitHubClient, full_name: str) -> tuple[str, str] | None:
         return None
 
     _git_run(["git", "config", "user.name", "github-innovator"], cwd=str(clone_dir), timeout=10)
-    _git_run(["git", "config", "user.email", "innovator@github.local"], cwd=str(clone_dir), timeout=10)
+    _git_run(
+        ["git", "config", "user.email", "innovator@github.local"],
+        cwd=str(clone_dir), timeout=10,
+    )
 
     return str(clone_dir), fork_url
 
@@ -94,11 +100,16 @@ def _remove_readonly(func, path, _):
 def cleanup(repo_path: str):
     if not Path(repo_path).exists():
         return
-    for _ in range(3):
+    for attempt in range(3):
         try:
             shutil.rmtree(repo_path, onerror=_remove_readonly)
             return
-        except Exception:
+        except OSError as e:
+            # Windows keeps a handle on files that were recently written, so
+            # a retry after a short pause is usually enough.
+            if attempt == 2:
+                logger.warning("Could not remove %s: %s", repo_path, e)
+                return
             import time
             time.sleep(0.5)
 

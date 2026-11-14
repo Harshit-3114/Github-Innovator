@@ -1,7 +1,8 @@
-import time
 import logging
+import time
 
-from openai import OpenAI, AuthenticationError, RateLimitError, APIError
+from openai import APIError, AuthenticationError, OpenAI, RateLimitError
+
 from core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -39,7 +40,7 @@ class NIMClient:
         try:
             models = client.models.list()
             return sorted(m.id for m in models.data)
-        except Exception as e:
+        except APIError as e:
             logger.warning(f"Failed to fetch model list from NIM: {e}")
             return []
 
@@ -78,9 +79,14 @@ class NIMClient:
             except (RateLimitError, APIError) as e:
                 last_error = e
                 wait = 2 ** attempt
-                logger.warning(f"NIM API transient error (attempt {attempt + 1}): {e}. Retrying in {wait}s")
+                logger.warning(
+                    f"NIM API transient error (attempt {attempt + 1}): {e}. "
+                    f"Retrying in {wait}s"
+                )
                 time.sleep(wait)
-            except Exception as e:
+            except (TypeError, ValueError, KeyError) as e:
+                # A malformed response or a bad kwarg is not an API outage, but
+                # one retry is cheap and covers a transient truncation.
                 last_error = e
                 logger.error(f"NIM API unexpected error: {e}")
                 if attempt == self._max_retries - 1:

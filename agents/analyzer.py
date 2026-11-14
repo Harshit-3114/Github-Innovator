@@ -1,9 +1,12 @@
 import json
 import logging
 from pathlib import Path
-from core.llm_client import nim
-from core.models import RepoInfo, QualifiedRepo
+
+from openai import OpenAIError
+
 from core.config import settings
+from core.llm_client import nim
+from core.models import QualifiedRepo, RepoInfo
 from db.repository import mark_repo_processed
 
 logger = logging.getLogger(__name__)
@@ -28,7 +31,9 @@ def analyze_innovation_opportunity(repo: RepoInfo) -> QualifiedRepo | None:
             user=prompt,
         )
         data = json.loads(result)
-    except Exception as e:
+    except (OpenAIError, ValueError, RuntimeError) as e:
+        # OpenAIError covers the NIM transport; ValueError covers both a
+        # missing API key and a JSON payload that is not valid JSON.
         logger.warning(f"Failed to analyze {repo.full_name}: {e}")
         return None
 

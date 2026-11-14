@@ -1,7 +1,8 @@
 from __future__ import annotations
-from typing import Optional, TypedDict
+
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import TypedDict
 
 
 @dataclass
@@ -53,7 +54,7 @@ class FunctionDef:
     name: str
     start_line: int
     end_line: int
-    docstring: Optional[str] = None
+    docstring: str | None = None
 
 
 @dataclass
@@ -88,16 +89,16 @@ class FileChange:
 class ValidationResult:
     passed: bool
     errors: list[str] = field(default_factory=list)
-    test_output: Optional[str] = None
+    test_output: str | None = None
 
 
 class InnovationState(TypedDict):
     candidate_repos: list[RepoInfo]
     qualified_repos: list[QualifiedRepo]
     innovation_opportunities: list[QualifiedRepo]
-    current_repo: Optional[QualifiedRepo]
-    code_graph: Optional[CodeGraph]
-    innovation_plan: Optional[InnovationPlan]
+    current_repo: QualifiedRepo | None
+    code_graph: CodeGraph | None
+    innovation_plan: InnovationPlan | None
     changed_files: list[FileChange]
     validation_results: list[ValidationResult]
     retry_count: int
@@ -111,13 +112,13 @@ class InnovationState(TypedDict):
 
 @dataclass
 class RunLog:
-    id: Optional[int] = None
+    id: int | None = None
     started_at: datetime = field(default_factory=datetime.now)
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
     repos_discovered: int = 0
     repos_qualified: int = 0
     forks_created: int = 0
     forks_succeeded: int = 0
     total_api_calls: int = 0
     status: str = "running"
-    error: Optional[str] = None
+    error: str | None = None

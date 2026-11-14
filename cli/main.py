@@ -1,23 +1,23 @@
-import sys
-import time
 import io
 import logging
+import sys
+import time
 from pathlib import Path
 
 import typer
 from rich.console import Console
 from rich.table import Table
 
-from db.schema import init_db
-from db.repository import get_recent_runs, get_forked_repos
-from agents.graph import run_pipeline
 from agents.code_indexer import build_code_graph
-from agents.planner import generate_innovation_plan
 from agents.code_writer import execute_plan
+from agents.graph import run_pipeline
+from agents.planner import generate_innovation_plan
+from agents.publisher import cleanup, commit_and_push, fork_and_clone
 from agents.readme_gen import generate_readme
-from agents.publisher import fork_and_clone, commit_and_push, cleanup
 from core.github_client import GitHubClient
-from core.models import RepoInfo, QualifiedRepo
+from core.models import QualifiedRepo, RepoInfo
+from db.repository import get_forked_repos, get_recent_runs
+from db.schema import init_db
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
@@ -58,7 +58,10 @@ def run():
         else:
             console.print("\n[yellow]No fork created — no qualifying opportunity found.[/yellow]")
     else:
-        console.print(f"\n[bold red]Pipeline failed:[/bold red] {result.get('error', 'Unknown error')}")
+        console.print(
+            f"\n[bold red]Pipeline failed:[/bold red] "
+            f"{result.get('error', 'Unknown error')}"
+        )
         raise typer.Exit(1)
 
 
@@ -118,8 +121,11 @@ def retry(limit: int = 5):
             continue
         repo_path, _ = result
 
-        repo_info = RepoInfo(full_name=full_name, owner=full_name.split("/")[0], name=full_name.split("/")[1],
-                             description="", language="Python", stars=0, topics=[], license_key="",
+        repo_info = RepoInfo(
+            full_name=full_name,
+            owner=full_name.split("/")[0],
+            name=full_name.split("/")[1],
+            description="", language="Python", stars=0, topics=[], license_key="",
                              pushed_at="", clone_url="", size_bytes=0)
         qualified = QualifiedRepo(repo=repo_info, score=10, rationale="Retry", best_innovation="",
                                   difficulty=1, estimated_effort_hours=1)

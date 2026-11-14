@@ -1,5 +1,6 @@
 import subprocess
 from pathlib import Path
+
 from core.models import ValidationResult
 
 
@@ -48,7 +49,9 @@ def run_tests(repo_path: str, language: str) -> tuple[bool, str]:
             return True, "No project config found for test runner"
 
     try:
-        result = subprocess.run(cmd, cwd=repo_path, capture_output=True, text=True, timeout=120)
+        result = subprocess.run(  # noqa: S603 - cmd is a fixed test runner, not user input
+            cmd, cwd=repo_path, capture_output=True, text=True, timeout=120, check=False
+        )
         if result.returncode == 0:
             return True, result.stdout[:500]
         return False, (result.stderr or result.stdout)[:500]
@@ -56,5 +59,5 @@ def run_tests(repo_path: str, language: str) -> tuple[bool, str]:
         return False, "Tests timed out"
     except FileNotFoundError:
         return True, "Test runner not installed"
-    except Exception as e:
+    except (OSError, subprocess.SubprocessError) as e:
         return False, str(e)

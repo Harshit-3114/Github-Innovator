@@ -1,4 +1,5 @@
 import logging
+
 from core.config import settings
 from core.github_client import GitHubClient
 from core.models import RepoInfo
@@ -10,7 +11,8 @@ SEARCH_QUERIES = [
     "stars:5..300 language:python NOT ai NOT machine-learning NOT deep-learning topic:cli forks:>1",
     "stars:5..300 language:javascript topic:cli forks:>1",
     "stars:5..300 language:typescript topic:cli forks:>1",
-    "stars:3..200 pushed:>2025-06-01 language:python -topic:awesome -topic:tutorial good-first-issues:>1",
+    "stars:3..200 pushed:>2025-06-01 language:python "
+    "-topic:awesome -topic:tutorial good-first-issues:>1",
     "stars:3..200 pushed:>2025-06-01 language:javascript -topic:awesome -topic:learning",
     "stars:5..300 language:go topic:cli -topic:awesome",
     "stars:5..300 language:rust topic:cli -topic:awesome",
